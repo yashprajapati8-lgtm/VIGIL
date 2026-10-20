@@ -8,7 +8,7 @@ right fix inside strict guardrails, and only calls it done when real checkouts r
 
 | | |
 | --- | --- |
-| **Demo video (about 3 min)** | _link added at submission_ |
+| **Demo video (5 min, voiced)** | **https://youtu.be/AQKw7XUuKtk** |
 | **Try it in your browser** (a real recorded run, nothing to install) | **https://vigil-six-blue.vercel.app** |
 | **Proving Ground scorecard** | **5/5 passed** across 4 real faults and a quiet period: median detection 18.8 s, median verified recovery 1m 15s, 0 false alarms |
 

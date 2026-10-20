@@ -625,7 +625,7 @@ a { color: var(--vigil); }
 .btn-small { height: 34px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
 .btn-chaos { background: linear-gradient(180deg, #4a2414, #2c160d); border-color: rgba(240, 122, 74, 0.55); color: #ffd9c7; }
 .btn-chaos:hover { background: linear-gradient(180deg, #5a2c18, #351a0f); }
-.guide { animation: vg-enter var(--t-enter) var(--ease-out); }
+.guide { animation: vg-enter var(--t-enter) var(--ease-out); scroll-margin-top: 112px; }
 .guide-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 1000px) { .guide-steps { grid-template-columns: minmax(0, 1fr); } }
 .guide-step {

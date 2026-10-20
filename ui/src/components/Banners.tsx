@@ -65,11 +65,16 @@ function ReplayBanner() {
   const date = when ? `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}, ${when.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "";
   const now = p.current?.label ?? "";
   const short = now.replace(/\s*\(.*\)$/, "");
-  const status = p.phase === "playing" ? `Playing: ${short}` : p.phase === "done" ? `Finished: ${short}` : "Pick a fault to play it.";
+  const status = p.hold === "approval" ? "Waiting for you: approve or reject the fix below."
+    : p.hold === "blocked" ? "Holding: actions are paused. Arm them to let VIGIL act."
+    : p.phase === "playing" ? `Playing: ${short}`
+    : p.phase === "done" ? (p.rejected ? "You rejected the fix and took over. Pick a fault to play again." : `Finished: ${short}`)
+    : "Pick a fault to play it.";
+  const yours = p.changedFromRecording ? ` Recorded at L3; now playing at ${p.control?.paused ? "your settings (actions paused)" : `your setting, ${p.control?.autonomy}`}.` : "";
   return (
     <div className="replay-banner" role="status">
       <span className="replay-dot" data-playing={p.phase === "playing"} aria-hidden="true"><Play size={12} /></span>
-      <span className="replay-text" title="A real run recorded on the team's laptop: every number on screen comes from that run">
+      <span className="replay-text" title={`A real run recorded on the team's laptop: every number on screen comes from that run.${yours}`}>
         <b>Recorded run</b>, {date}. <span className="replay-now">{status}</span>
       </span>
       <span className="replay-actions">

@@ -1,5 +1,5 @@
-import { Activity, ArrowUpRight, FlaskConical, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, ArrowUpRight, FlaskConical, ShoppingBag, SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 // The first thing a cold visitor sees when nothing is happening: three steps, in
 // order, that make VIGIL do its job in about a minute. Hidden once dismissed; the
@@ -24,10 +24,15 @@ export function showGuide() {
   window.dispatchEvent(new Event("vigil:guide"));
 }
 
-export function StartHere({ onOpenChaos }: { onOpenChaos: () => void }) {
-  const [hidden, setHidden] = useState(readHidden);
+export function StartHere({ onOpenChaos, replay = false }: { onOpenChaos: () => void; replay?: boolean }) {
+  // The replay starts playing by itself, so its guide waits for the help button.
+  const [hidden, setHidden] = useState(() => replay || readHidden());
+  const ref = useRef<HTMLElement>(null);
   useEffect(() => {
-    const show = () => setHidden(false);
+    const show = () => {
+      setHidden(false);
+      window.setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    };
     window.addEventListener("vigil:guide", show);
     return () => window.removeEventListener("vigil:guide", show);
   }, []);
@@ -35,6 +40,7 @@ export function StartHere({ onOpenChaos }: { onOpenChaos: () => void }) {
 
   const hide = () => {
     setHidden(true);
+    if (replay) return;
     try {
       localStorage.setItem(KEY, "1");
     } catch {
@@ -42,8 +48,42 @@ export function StartHere({ onOpenChaos }: { onOpenChaos: () => void }) {
     }
   };
 
+  if (replay) {
+    return (
+      <section className="panel guide" aria-labelledby="guide-title" ref={ref}>
+        <div className="panel-head">
+          <h2 id="guide-title">Try VIGIL yourself</h2>
+          <button type="button" className="btn btn-ghost btn-small" onClick={hide}>Hide guide</button>
+        </div>
+        <p className="panel-caption">This page replays real runs recorded on our laptop. Nothing here can break anything, so change any setting and watch what VIGIL does.</p>
+        <ol className="guide-steps">
+          <li className="guide-step">
+            <span className="guide-num" aria-hidden="true">1</span>
+            <span className="guide-icon" aria-hidden="true"><SlidersHorizontal size={18} /></span>
+            <b>Choose how much VIGIL may do</b>
+            <span>Pick an autonomy level at the top. <i>L3</i> fixes alone, as recorded. <i>L2</i> asks before a rollback. <i>L1</i> and <i>L0</i> ask you to approve every fix. Turn <i>Actions</i> off and VIGIL holds.</span>
+          </li>
+          <li className="guide-step">
+            <span className="guide-num" aria-hidden="true">2</span>
+            <span className="guide-icon guide-icon-chaos" aria-hidden="true"><FlaskConical size={18} /></span>
+            <b>Break something</b>
+            <span>In Chaos Lab, hold a fault to play its recorded run. <i>Slow inventory</i> is the tricky one: payment fails, but inventory is the cause.</span>
+            <button type="button" className="btn btn-small btn-chaos" onClick={onOpenChaos}>Pick a fault</button>
+          </li>
+          <li className="guide-step">
+            <span className="guide-num" aria-hidden="true">3</span>
+            <span className="guide-icon guide-icon-vigil" aria-hidden="true"><Activity size={18} /></span>
+            <b>Watch it heal, or approve it</b>
+            <span>The map marks the real cause and the loop fills in. Below L3 a card asks you to approve or reject the fix; then VIGIL checks real checkouts recover.</span>
+            <span className="guide-note">Time you take to approve is added to the recovery time</span>
+          </li>
+        </ol>
+      </section>
+    );
+  }
+
   return (
-    <section className="panel guide" aria-labelledby="guide-title">
+    <section className="panel guide" aria-labelledby="guide-title" ref={ref}>
       <div className="panel-head">
         <h2 id="guide-title">See VIGIL work in about a minute</h2>
         <button type="button" className="btn btn-ghost btn-small" onClick={hide}>Hide guide</button>

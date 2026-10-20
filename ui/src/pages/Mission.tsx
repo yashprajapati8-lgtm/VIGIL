@@ -18,7 +18,7 @@ export function Mission({ onOpenChaos }: { onOpenChaos: () => void }) {
   if (!loaded) return error ? <LoadError message={error} onRetry={refresh} /> : <MissionSkeleton />;
   return (
     <>
-      {!focus && !learning && !REPLAY && <StartHere onOpenChaos={onOpenChaos} />}
+      {REPLAY ? <StartHere replay onOpenChaos={onOpenChaos} /> : !focus && !learning && <StartHere onOpenChaos={onOpenChaos} />}
       <div className="mission">
         <div className="mission-main">
           <ServiceMap />

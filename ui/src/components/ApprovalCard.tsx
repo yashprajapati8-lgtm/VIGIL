@@ -38,7 +38,7 @@ export function ApprovalCard({ runAsOperator }: { runAsOperator: RunAsOperator }
         <h2 id="approve-title">{Verb}?</h2>
         <p id="approve-why">
           {diag
-            ? <>Root cause: <strong>{diag.root}</strong> ({(CATEGORY_LABEL[diag.category] ?? diag.category).toLowerCase()}), confidence <strong>{diag.confidence}</strong>, so VIGIL asks first. </>
+            ? <>Root cause: <strong>{diag.root}</strong> ({(CATEGORY_LABEL[diag.category] ?? diag.category).toLowerCase()}), confidence <strong>{diag.confidence}</strong>. VIGIL asks first: {d.why ?? "a human must approve"}. </>
             : <>{focus.title}. VIGIL asks first. </>}
           This should save about <strong>{num(chosen?.saves ?? 0)}</strong> checkouts in the next {d.horizon_min ?? 5} minutes.
         </p>

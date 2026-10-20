@@ -1,13 +1,14 @@
 import { ApiError } from "../api/errors";
+import type { Control } from "../api/types";
 import { player, SCENARIO_TEXT } from "./player";
 
-// The same routes the live app calls, answered from the recording. Anything that
-// would change a real system (operator controls, approvals, the shop) says plainly
-// that it needs the live stack.
+// The same routes the live app calls, answered from the recording. Autonomy, the
+// kill switch and approvals change what plays in this browser (see player.ts); the
+// demo shop needs the live stack.
 
-const LIVE_ONLY = "This is a replay of a recorded run. Operator controls work on the live stack (docker compose up).";
+const LIVE_ONLY = "This is a replay of a recorded run. That part needs the live stack (docker compose up).";
 
-export async function replayRequest<T>(method: string, url: string): Promise<T> {
+export async function replayRequest<T>(method: string, url: string, body?: unknown): Promise<T> {
   const path = url.split("?")[0];
   if (method === "GET") {
     if (path === "/api/health") return player.health() as T;
@@ -35,6 +36,10 @@ export async function replayRequest<T>(method: string, url: string): Promise<T> 
       await player.reset();
       return { errors: {} } as T;
     }
+    if (path === "/api/control") return (await player.setControl((body ?? {}) as Partial<Control>)) as T;
+    if (path === "/api/operator/check") return { ok: true } as T;
+    const decide = path.match(/^\/api\/incidents\/([A-Za-z0-9-]+)\/(approve|reject)$/);
+    if (decide) return (decide[2] === "approve" ? await player.approve(decide[1]) : await player.reject(decide[1])) as T;
     if (path === "/api/store/pay") throw new ApiError(503, "The demo shop needs the live stack: this page is a replay");
     throw new ApiError(403, LIVE_ONLY);
   }

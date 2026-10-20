@@ -94,8 +94,8 @@ export function ControlCapsule({ unlocked, runAsOperator, onLock, onLocked }: Pr
         <span className="control-label" id="autonomy-label">Autonomy</span>
         <div className="segmented" role="group" aria-labelledby="autonomy-label">
           {LEVELS.map((l) => (
-            <button key={l.id} type="button" aria-pressed={control?.autonomy === l.id} disabled={REPLAY}
-              title={REPLAY ? `Recorded at autonomy ${control?.autonomy ?? ""}. Change it on the live stack.` : l.help}
+            <button key={l.id} type="button" aria-pressed={control?.autonomy === l.id} disabled={!control}
+              title={REPLAY && l.id === "L3" ? `${l.help}. The recorded runs used L3` : l.help}
               onClick={() => control?.autonomy !== l.id && send({ autonomy: l.id })}>
               {l.id}
             </button>
@@ -103,8 +103,8 @@ export function ControlCapsule({ unlocked, runAsOperator, onLock, onLocked }: Pr
         </div>
         <span className="sr-only">{level?.help}</span>
       </div>
-      <button type="button" className="switch" role="switch" aria-checked={!control?.paused} disabled={REPLAY}
-        title={REPLAY ? "The kill switch works on the live stack" : control?.paused ? "Actions paused: VIGIL watches but won't act" : "Actions armed: VIGIL may fix things within its guardrails"}
+      <button type="button" className="switch" role="switch" aria-checked={!control?.paused} disabled={!control}
+        title={control?.paused ? "Actions paused: VIGIL watches but won't act. Click to arm" : "Actions armed: VIGIL may fix things within its guardrails. Click to pause (kill switch)"}
         onClick={() => send({ paused: !control?.paused })}>
         <span className="switch-knob">{control?.paused ? <Pause size={18} /> : <Play size={18} />}</span>
         Actions {control?.paused ? "paused" : "armed"}
@@ -113,16 +113,17 @@ export function ControlCapsule({ unlocked, runAsOperator, onLock, onLocked }: Pr
         onClick={() => { navigate("/console"); showGuide(); }}>
         <CircleHelp size={18} />
       </button>
-      <button type="button" className="icon-btn" data-unlocked={unlocked} disabled={REPLAY}
-        aria-label={unlocked ? "Operator controls unlocked. Lock them" : "Unlock operator controls"}
-        title={unlocked ? "Operator mode: lock" : "Operator mode: unlock"}
+      <button type="button" className="icon-btn" data-unlocked={unlocked || REPLAY}
+        aria-label={REPLAY ? "Operator controls: no token needed in this replay" : unlocked ? "Operator controls unlocked. Lock them" : "Unlock operator controls"}
+        title={REPLAY ? "Operator controls: open in this replay" : unlocked ? "Operator mode: lock" : "Operator mode: unlock"}
         onClick={() => {
-          if (unlocked) {
+          if (REPLAY) onLock();
+          else if (unlocked) {
             setToken(null);
             onLocked();
           } else onLock();
         }}>
-        {unlocked ? <LockOpen size={18} /> : <Lock size={18} />}
+        {unlocked || REPLAY ? <LockOpen size={18} /> : <Lock size={18} />}
       </button>
     </header>
   );

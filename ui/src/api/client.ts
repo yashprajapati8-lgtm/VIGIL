@@ -28,7 +28,7 @@ export function setToken(token: string | null): void {
 }
 
 async function request<T>(method: string, url: string, body?: unknown, auth = false): Promise<T> {
-  if (REPLAY) return replayRequest<T>(method, url);
+  if (REPLAY) return replayRequest<T>(method, url, body);
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {

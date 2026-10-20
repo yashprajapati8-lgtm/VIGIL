@@ -14,6 +14,7 @@ import { Mission } from "./pages/Mission";
 import { ProvingGround } from "./pages/ProvingGround";
 import { Store } from "./pages/Store";
 import { useVigil, VigilProvider } from "./state/vigil";
+import { REPLAY } from "./replay/player";
 
 export function App() {
   const path = usePath();
@@ -38,7 +39,7 @@ function Console({ path }: { path: string }) {
 
   const runAsOperator: RunAsOperator = useCallback(
     (action) => {
-      if (unlocked) {
+      if (unlocked || REPLAY) {
         void action();
         return;
       }
