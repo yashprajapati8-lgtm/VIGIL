@@ -64,13 +64,13 @@ function ReplayBanner() {
   const when = p.index ? new Date(p.index.recorded_at * 1000) : null;
   const date = when ? `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}, ${when.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "";
   const now = p.current?.label ?? "";
-  const status = p.phase === "playing" ? `Playing: ${now}` : p.phase === "done" ? `Finished: ${now}` : "Ready";
+  const short = now.replace(/\s*\(.*\)$/, "");
+  const status = p.phase === "playing" ? `Playing: ${short}` : p.phase === "done" ? `Finished: ${short}` : "Pick a fault to play it.";
   return (
     <div className="replay-banner" role="status">
       <span className="replay-dot" data-playing={p.phase === "playing"} aria-hidden="true"><Play size={12} /></span>
-      <span className="replay-text">
-        <b>Replay of a real run</b> recorded {date} on the team's laptop: every number comes from that run.{" "}
-        <span className="replay-now">{status}</span>
+      <span className="replay-text" title="A real run recorded on the team's laptop: every number on screen comes from that run">
+        <b>Recorded run</b>, {date}. <span className="replay-now">{status}</span>
       </span>
       <span className="replay-actions">
         <button type="button" className="btn btn-small btn-chaos" onClick={() => window.dispatchEvent(new Event("vigil:open-chaos"))}>
