@@ -10,7 +10,7 @@ import { REPLAY, REPO_URL } from "../replay/player";
 // the console (live, or the recorded run on the hosted link) or watch the video.
 
 const VIDEO_URL: string = import.meta.env.VITE_VIDEO_URL || "https://youtu.be/AQKw7XUuKtk";
-const NOBODY = { secs: 22 * 60 + 31, lost: 20336 };   // the same fault, nobody acting (measured)
+const NOBODY = { secs: 22 * 60 + 31, lost: 20336 };   // the same fault, nobody acting: still failing when the test ended (measured)
 
 interface Row { scenario: string; label: string; pass?: boolean; mttd_s?: number | null; mttr_s?: number | null; checkouts_lost?: number | null; actions?: string[]; root?: string | null }
 interface Card { summary: { passed: number; total: number; median_detect_s: number | null; median_recover_s: number | null; false_alarms: number; started_at: number }; rows: Row[] }
@@ -174,16 +174,16 @@ export function Home() {
             <h2 id="problem-title">The outage that hurts most is the one that looks healthy</h2>
             <p>
               Inventory slows down, but its health check stays green. Payment, which calls it, starts failing, so payment
-              looks guilty. Restart payment and nothing changes. At 3 a.m. someone has to work that out by hand while
-              customers leave.
+              looks guilty. Restart payment and nothing changes. Kubernetes won't catch it either: the health check
+              passes, so nothing gets restarted. At 3 a.m. someone has to work that out by hand while customers leave.
             </p>
           </div>
           <div className="race" role="img"
-            aria-label={`Same fault. Nobody acting: ${duration(NOBODY.secs)}, ${num(NOBODY.lost)} checkouts lost.${flagship?.mttr_s != null ? ` With VIGIL: ${duration(flagship.mttr_s)}, ${num(flagship.checkouts_lost ?? 0)} lost.` : ""}`}>
+            aria-label={`Same fault. Nobody acting: still failing after ${duration(NOBODY.secs)}, ${num(NOBODY.lost)} checkouts lost.${flagship?.mttr_s != null ? ` With VIGIL: ${duration(flagship.mttr_s)}, ${num(flagship.checkouts_lost ?? 0)} lost.` : ""}`}>
             <div className="race-row">
               <span className="race-who">Nobody acting</span>
               <span className="race-bar race-bad" style={{ width: "100%" }} />
-              <span className="race-val"><b>{duration(NOBODY.secs)}</b> {num(NOBODY.lost)} checkouts lost</span>
+              <span className="race-val"><b>{duration(NOBODY.secs)}</b> and still failing, {num(NOBODY.lost)} checkouts lost</span>
             </div>
             {flagship?.mttr_s != null && (
               <div className="race-row">
@@ -192,7 +192,7 @@ export function Home() {
                 <span className="race-val"><b>{duration(flagship.mttr_s)}</b> {num(flagship.checkouts_lost ?? 0)} checkouts lost</span>
               </div>
             )}
-            <p className="race-note">The same fault, injected for real, measured from the first failing checkout to verified recovery.</p>
+            <p className="race-note">The same fault, injected for real. With nobody acting it was still failing when we ended the test; with VIGIL it is timed from the moment the fault was injected to verified recovery.</p>
           </div>
         </section>
 
@@ -265,14 +265,14 @@ export function Home() {
 
         <section className="home-section built" aria-labelledby="built-title">
           <h2 id="built-title">Built with</h2>
-          <ul className="stack">
+          <ul className="tech-stack">
             <li><b>Engine</b> Python, FastAPI, scikit-learn IsolationForest, 104 tests</li>
             <li><b>Telemetry</b> Prometheus golden signals</li>
             <li><b>Second opinion</b> Groq, gpt-oss-120b</li>
             <li><b>Console</b> React, TypeScript, Vite, live server-sent events</li>
             <li><b>Runs on</b> Docker Compose: 3 services, load generator, chaos controller</li>
           </ul>
-          <p className="team">Team VIGIL: Yash Prajapati (backend and ML) and Nikhil (backend and frontend).</p>
+          <p className="team">Built by Yash Prajapati (team Yash_P) for the Baloon National Hackathon 2026.</p>
         </section>
       </main>
 

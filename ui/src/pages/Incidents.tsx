@@ -30,7 +30,7 @@ export function Incidents() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Incident</th><th>Status</th><th>Root cause</th><th>Started</th><th>Recovered in</th><th>Checkouts lost</th></tr>
+              <tr><th>Incident</th><th>Status</th><th>Root cause</th><th>Started</th><th>Symptom to recovery</th><th>Checkouts lost</th></tr>
             </thead>
             <tbody>
               {list.map((i) => {

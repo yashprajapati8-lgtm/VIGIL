@@ -16,8 +16,10 @@ right fix inside strict guardrails, and only calls it done when real checkouts r
 
 The outage that hurts most is the one that looks healthy. In our demo shop, inventory slows
 down but its health check stays green. Payment, which calls it, starts failing, so the loud
-service is the wrong one to restart. In our test, that fault ran **22 min 31 s** and cost
-**20,336 checkouts** with nobody acting. VIGIL fixed the same fault in **1 min 13 s** (598 checkouts lost).
+service is the wrong one to restart. Kubernetes liveness probes don't help either: the health check
+passes, so nothing is restarted. In our test, with nobody acting, that fault was still failing after
+**22 min 31 s** and had cost **20,336 checkouts**. VIGIL fixed the same fault in **1 min 13 s**
+(598 checkouts lost).
 
 ## What VIGIL does
 

@@ -3,6 +3,7 @@ import { TERMINAL } from "../api/types";
 import { isDemand, trafficMultiple } from "../lib/demand";
 import { CATEGORY_LABEL, ms, pct } from "../lib/format";
 import { useVigil } from "../state/vigil";
+import { REPLAY } from "../replay/player";
 
 // The hero. Three services and the calls between them, drawn from live data.
 // Each card says in plain words what is happening to it, shows every number next
@@ -168,7 +169,7 @@ export function ServiceMap() {
     <section className="panel map area-map" aria-labelledby="map-title">
       <div className="panel-head">
         <h2 id="map-title">Service map</h2>
-        <span className="panel-sub">{walking ? `Blame walk: ${walk!.join(" → ")}` : "Live from Prometheus every 5 s"}</span>
+        <span className="panel-sub">{walking ? `Blame walk: ${walk!.join(" → ")}` : (REPLAY ? "Recorded from Prometheus every 5 s" : "Live from Prometheus every 5 s")}</span>
       </div>
       <p className="panel-caption">
         A checkout flows left to right: storefront calls payment, payment calls inventory. A <b>red dashed line</b> is a call
