@@ -6,6 +6,7 @@ import "@fontsource/ibm-plex-mono/latin-500.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/home.css";
+import "./styles/phone.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

@@ -259,6 +259,27 @@ docker compose --profile prove run --rm proving-ground   # about 20 minutes
 
 Needs payment v2 to exist: run `.\scripts\deploy.ps1 v2` then `.\scripts\deploy.ps1 v1` once first.
 
+## Pay from your phone (demo checkout, no real money)
+
+Open the **Phone checkout** page in the console (phone icon in the left rail) and scan the QR code.
+The phone opens a small checkout (`/pay`). "Pay" sends a real order down the same path as every other
+customer, storefront → payment → inventory, so when a fault is running the phone's payment fails too,
+with the reason in plain words, and the strip at the bottom shows what VIGIL is doing about it. The
+console shows each phone payment as a toast, plus the connected phones and their latest payments.
+No money moves: the card charge is the demo payment service.
+
+For a phone that is not on this laptop's Wi-Fi (or judges on a video call), start a public link:
+
+```powershell
+docker compose --profile public up -d cloudflared
+```
+
+It is a Cloudflare quick tunnel (no account) and the link appears on the Phone page by itself (or run
+`docker compose --profile public logs cloudflared` and copy the `https://…trycloudflare.com` address).
+The tunnel points at a separate gateway (port 8081 inside the console container) that serves **only**
+the checkout page and its three routes: the console, Chaos Lab, the engine API and the operator
+controls are not reachable through it. Stop it with `docker compose --profile public stop cloudflared`.
+
 ## Hosted replay: a link that works without the stack
 
 Judges can't run Docker from a link, so the UI has a **replay build**: it plays back

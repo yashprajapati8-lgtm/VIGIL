@@ -211,3 +211,16 @@ services:
     volumes:
       - ./data/proving-ground:/usr/share/nginx/proving-ground:ro   # the Proving Ground page reads its scorecard here
     depends_on: [vigil-engine, chaos-controller]
+
+  # Optional public link for phones: a Cloudflare quick tunnel (no account needed) to the
+  # console's phone gateway on port 8081, which serves only the demo checkout (/pay) and
+  # its three routes. The console, Chaos Lab and operator controls stay private.
+  #   docker compose --profile public up -d cloudflared     (the link shows on the Phone page)
+  #   docker compose --profile public stop cloudflared      (link gone)
+  cloudflared:
+    image: cloudflare/cloudflared:2025.11.1
+    container_name: cloudflared
+    profiles: ["public"]
+    command: ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "--url", "http://vigil-ui:8081"]
+    networks: [app]
+    depends_on: [ui]

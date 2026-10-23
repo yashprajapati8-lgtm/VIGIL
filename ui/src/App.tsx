@@ -11,6 +11,9 @@ import { Home } from "./pages/Home";
 import { IncidentDetail } from "./pages/IncidentDetail";
 import { Incidents } from "./pages/Incidents";
 import { Mission } from "./pages/Mission";
+import { PhoneCheckout } from "./pages/PhoneCheckout";
+import { Phones } from "./pages/Phones";
+import { PhoneToasts } from "./components/PhoneToasts";
 import { ProvingGround } from "./pages/ProvingGround";
 import { Store } from "./pages/Store";
 import { useVigil, VigilProvider } from "./state/vigil";
@@ -19,6 +22,7 @@ import { REPLAY } from "./replay/player";
 export function App() {
   const path = usePath();
   if (path.startsWith("/store")) return <Store />;
+  if (path === "/pay" || path.startsWith("/pay/")) return <PhoneCheckout />;
   if (path === "/" || path === "") return <Home />;
   return (
     <VigilProvider>
@@ -54,6 +58,8 @@ function Console({ path }: { path: string }) {
     <IncidentDetail id={incidentId} />
   ) : path.startsWith("/proving-ground") ? (
     <ProvingGround />
+  ) : path.startsWith("/phones") ? (
+    <Phones />
   ) : path.startsWith("/incidents") ? (
     <Incidents />
   ) : (
@@ -66,7 +72,7 @@ function Console({ path }: { path: string }) {
   }, []);
   useEffect(() => {
     const name = incidentId ? incidentId : path.startsWith("/proving-ground") ? "Proving Ground"
-      : path.startsWith("/incidents") ? "Incidents" : "Mission";
+      : path.startsWith("/incidents") ? "Incidents" : path.startsWith("/phones") ? "Phone checkout" : "Mission";
     document.title = `VIGIL | ${name}`;
   }, [path, incidentId]);
 
@@ -84,6 +90,7 @@ function Console({ path }: { path: string }) {
         {page}
       </main>
       <ApprovalCard runAsOperator={runAsOperator} />
+      {!REPLAY && <PhoneToasts />}
       {chaosOpen && <ChaosDrawer onClose={() => setChaosOpen(false)} />}
       {asking && (
         <OperatorModal

@@ -166,7 +166,8 @@ class PrometheusCollector:
             snap.edges.append(e)
 
         ok = r["user"].get(("ok",)) or 0.0
-        failed = r["user"].get(("failed",)) or 0.0
+        # A checkout the shop could not even start (too many already waiting) failed too.
+        failed = (r["user"].get(("failed",)) or 0.0) + (r["user"].get(("dropped",)) or 0.0)
         total = ok + failed
         snap.user.checkout_rps = total
         if total >= self.s.min_rps_for_rates:

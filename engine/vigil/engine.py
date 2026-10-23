@@ -18,7 +18,8 @@ from .bus import Bus
 from .collector import PrometheusCollector, Snapshot
 from .config import Settings
 from .detector import ServiceDetector, Verdict
-from .diagnosis import CATEGORY_LABEL, blame_walk, build_evidence, classify, confidence, evidence_types
+from .diagnosis import (SURGE_FACTOR, CATEGORY_LABEL, blame_walk, build_evidence, classify, confidence,
+                        evidence_types)
 from .incidents import IncidentManager
 from .actuator_client import ActuatorClient
 from .llm import LLMClient
@@ -59,6 +60,10 @@ class Engine:
         self._due_remediation: list[str] = []
         self._due_scale_in: list[str] = []
         self._ticks = 0
+        # After an incident nobody was hurt by is handed to a human, the same service
+        # does not open again on a quiet anomaly for a while (it would only repeat the
+        # same diagnosis and the same escalation). Anything that hurts users still opens.
+        self.quiet_until: dict[str, float] = {}
 
         for svc, det in self.detectors.items():
             if det.load():
@@ -147,6 +152,7 @@ class Engine:
         self.incidents.observe_edges(snap)
         self._track_versions(snap)
         active = self.incidents.active_services()
+        surge = self.surge()
         for svc, det in self.detectors.items():
             if svc in active:
                 det.pause_learning()
@@ -161,8 +167,12 @@ class Engine:
             # not a fault: open only if users get hurt, never on CPU above a quiet baseline.
             z = v.z or {}
             demand = z.get("rps", 0.0) > self.s.z_flag and z.get("cpu_per_req", 0.0) < 2
+            # During a surge of customers every service is busier than its quiet
+            # baseline. With nobody hurt that is demand, not a fault: never open on it.
+            muted = time.time() < self.quiet_until.get(svc, 0.0) or surge is not None
             change = det.persistence.update(v.flagged, v.hard, impact=self._impact(svc, v, snap),
-                                            allow_quiet=svc not in self.remediator.scaled and not demand)
+                                            allow_quiet=svc not in self.remediator.scaled and not demand
+                                            and not muted)
             if change == "opened":
                 self.incidents.on_service_opened(svc, v, snap, onset=self.first_flag.get(svc))
             elif change == "cleared":
@@ -183,6 +193,25 @@ class Engine:
         if (v.z or {}).get("error_rate", 0.0) >= self.s.z_flag:
             return True
         return any(e.caller == svc and (e.fail_ratio or 0.0) >= self.s.edge_bad_fail_ratio for e in snap.edges)
+
+    def normal_checkout_rps(self) -> float | None:
+        """Normal checkouts per second: the learned traffic of the service customers reach first."""
+        first = next((b for a, b in self.s.static_edges if a == self.s.user_facing), None)
+        det = self.detectors.get(first) if first else None
+        return det.baseline.medians.get("rps") if det and det.baseline else None
+
+    def surge(self) -> tuple[float, float] | None:
+        """(offered, normal) checkout attempts per second while demand is a surge, else None."""
+        normal = self.normal_checkout_rps()
+        offered = self.last.user.checkout_rps if self.last else None
+        if normal and offered and normal >= self.s.min_rps_for_rates and offered >= SURGE_FACTOR * normal:
+            return offered, normal
+        return None
+
+    def mute_quiet(self, services: list[str], seconds: float = 900) -> None:
+        until = time.time() + seconds
+        for svc in services:
+            self.quiet_until[svc] = until
 
     def reset_persistence(self, services: list[str]) -> None:
         """After an incident closes, a fresh anomaly must open a fresh incident."""
@@ -224,10 +253,14 @@ class Engine:
             onsets = inc["data"].get("onset", {})
             walk = blame_walk(services, self.verdicts, self.last, self.incidents.edges,
                               self.s.edge_bad_fail_ratio, self.s.edge_bad_p95_ms)
-            category, why = classify(walk.root, self.verdicts.get(walk.root), self.changes,
-                                     time.time(), self.s.change_window_s)
+            surge = self.surge()
+            root_v = self.verdicts.get(walk.root)
+            category, why = classify(walk.root, root_v, self.changes,
+                                     time.time(), self.s.change_window_s, surge=surge)
+            overloaded_down = bool(surge) and root_v is not None and root_v.state == "down"
             medians = {s: d.baseline.medians for s, d in self.detectors.items() if d.baseline}
-            pack = build_evidence(inc_id, services, self.verdicts, self.last, medians, onsets, self.changes)
+            pack = build_evidence(inc_id, services, self.verdicts, self.last, medians, onsets, self.changes,
+                                  normal_checkout_rps=self.normal_checkout_rps())
             route = " -> ".join(walk.path)
             ev = self.store.append_event(
                 incident_id=inc_id, stage="diagnose", actor="walk", kind="blame_walk",
@@ -235,7 +268,8 @@ class Engine:
                 payload={**walk.to_dict(), "category": category, "category_why": why})
             self.bus.publish({"type": "event", "event": ev})
             return {"services": services, "onsets": onsets, "walk": walk, "category": category,
-                    "category_why": why, "pack": pack}
+                    "category_why": why, "pack": pack, "overloaded_down": overloaded_down,
+                    "demand": category == "load_saturation" and surge is not None}
 
     def _apply_diagnosis(self, inc_id: str, prep: dict, llm: dict) -> dict | None:
         with self.lock:
@@ -252,8 +286,10 @@ class Engine:
                                          kind=f"llm_{llm['status']}", summary=text, payload=llm)
             self.bus.publish({"type": "event", "event": ev})
 
-            types = evidence_types(walk, prep["onsets"], self.s.tick_seconds, multi)
-            level, reasons = confidence(walk, category, llm, types, multi)
+            types = evidence_types(walk, prep["onsets"], self.s.tick_seconds, multi,
+                                   demand=prep.get("demand", False))
+            level, reasons = confidence(walk, category, llm, types, multi,
+                                        overloaded_down=prep.get("overloaded_down", False))
             symptoms = walk.symptoms
             title = f"{walk.root}: {CATEGORY_LABEL[category]}"
             failing = [s for s in symptoms if s not in walk.cleared]
@@ -311,10 +347,14 @@ class Engine:
 
     def verdicts_view(self) -> dict:
         out = {}
+        surge = self.surge()
+        served = self.last is not None and (self.last.user.fail_ratio or 0.0) < self.s.recovered_fail_ratio
         for svc, det in self.detectors.items():
             v = self.verdicts.get(svc)
             out[svc] = {
                 **(asdict(v) if v else {"state": "unknown"}),
+                # Busy from a surge of customers while every checkout is served: demand, not a fault.
+                "demand": bool(surge and served and v is not None and v.flagged and v.state != "down"),
                 "baseline": None if det.baseline is None else {
                     "samples": det.baseline.n_samples, "created_at": det.baseline.created_at,
                     "medians": {k: round(x, 3) for k, x in det.baseline.medians.items()}},

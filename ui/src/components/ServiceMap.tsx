@@ -4,6 +4,9 @@ import { isDemand, trafficMultiple } from "../lib/demand";
 import { CATEGORY_LABEL, ms, pct } from "../lib/format";
 import { useVigil } from "../state/vigil";
 import { REPLAY } from "../replay/player";
+import { Smartphone } from "lucide-react";
+import type { ReactNode } from "react";
+import { usePhones, rupees, type PhonePayment } from "../lib/phones";
 
 // The hero. Three services and the calls between them, drawn from live data.
 // Each card says in plain words what is happening to it, shows every number next
@@ -98,8 +101,8 @@ function serviceRows(s: ServiceSample | undefined, v: Verdict | undefined): Row[
 
 const BADGE: Partial<Record<Look, string>> = { root: "Root cause", symptom: "Symptom", acting: "VIGIL acting" };
 
-function ServiceCard({ name, card, rows, version, instances }: {
-  name: Name; card: Card; rows: Row[]; version?: string | null; instances?: number | null;
+function ServiceCard({ name, card, rows, version, instances, extra }: {
+  name: Name; card: Card; rows: Row[]; version?: string | null; instances?: number | null; extra?: ReactNode;
 }) {
   const many = (instances ?? 1) > 1;
   const mixed = !!version && version.includes(",");
@@ -121,6 +124,7 @@ function ServiceCard({ name, card, rows, version, instances }: {
         )}
       </header>
       <p className="node-state"><span className="node-dot" aria-hidden="true" />{card.state}</p>
+      {extra}
       <table className="node-table">
         {showNormal && (
           <thead><tr><th scope="col"><span className="sr-only">signal</span></th><th scope="col">now</th><th scope="col">normal</th></tr></thead>
@@ -140,8 +144,8 @@ function ServiceCard({ name, card, rows, version, instances }: {
   );
 }
 
-function Wire({ stats, rps, unit, walking }: {
-  stats?: { fail_ratio: number | null; p95_ms: number | null }; rps: number | null; unit: string; walking?: boolean;
+function Wire({ stats, rps, unit, walking, phone }: {
+  stats?: { fail_ratio: number | null; p95_ms: number | null }; rps: number | null; unit: string; walking?: boolean; phone?: PhonePayment | null;
 }) {
   const bad = edgeBad(stats);
   return (
@@ -149,6 +153,7 @@ function Wire({ stats, rps, unit, walking }: {
       <span className="wire-label">
         {bad ? <><b>{pct(stats?.fail_ratio ?? 0)} failing</b><span>p95 {ms(stats?.p95_ms)}</span></>
           : <span>{rps != null ? `${rps.toFixed(0)} ${unit}` : ""}</span>}
+        {phone && <em className="wire-phone" data-ok={phone.ok}><Smartphone size={12} aria-hidden="true" /> +1 from a phone</em>}
       </span>
       <span className="wire-line" aria-hidden="true">{walking && <span className="walk-dot" />}</span>
     </div>
@@ -164,6 +169,11 @@ export function ServiceMap() {
   const walk = open?.data.diagnosis?.walk.path;
   const walking = !!walk && walk.length > 1;
   const card = (n: Name) => cardFor(n, verdicts[n], focus, latest, verdicts);
+  // A payment someone just made from a phone (the last 6 s): shown on the storefront,
+  // because one checkout can't move a 20-second average, but people should see it land.
+  const { status: phones } = usePhones();
+  const latestPhone = phones?.payments[0];
+  const phone = latestPhone && phones && phones.now - latestPhone.ts < 6 ? latestPhone : null;
 
   return (
     <section className="panel map area-map" aria-labelledby="map-title">
@@ -183,8 +193,14 @@ export function ServiceMap() {
               { label: "checkouts", now: user?.checkout_rps != null ? `${user.checkout_rps.toFixed(0)}/s` : "–" },
               { label: "failing", now: pct(user?.fail_ratio), hot: (user?.fail_ratio ?? 0) >= 0.02 },
               { label: "p95 checkout", now: ms(user?.p95_ms), tip: "95% of checkouts finish faster than this" },
-            ]} />
-          <Wire stats={user ? { fail_ratio: user.fail_ratio, p95_ms: user.p95_ms } : undefined} rps={user?.checkout_rps ?? null} unit="checkouts/s" />
+            ]}
+            extra={phone && (
+              <p className="node-phone" data-ok={phone.ok} key={phone.id}>
+                <Smartphone size={14} aria-hidden="true" />
+                {phone.ok ? `Phone paid · ${rupees(phone.amount)}` : "Phone payment failed"}
+              </p>
+            )} />
+          <Wire stats={user ? { fail_ratio: user.fail_ratio, p95_ms: user.p95_ms } : undefined} rps={user?.checkout_rps ?? null} unit="checkouts/s" phone={phone} />
           <ServiceCard name="payment" card={card("payment")} rows={serviceRows(s.payment, verdicts.payment)}
             version={s.payment?.version} instances={s.payment?.instances} />
           <Wire stats={pi} rps={pi?.rps ?? null} unit="calls/s" walking={walking} />

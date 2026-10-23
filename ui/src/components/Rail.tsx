@@ -1,4 +1,4 @@
-import { FlaskConical, ShoppingBag, Trophy, TriangleAlert } from "lucide-react";
+import { FlaskConical, ShoppingBag, Smartphone, Trophy, TriangleAlert } from "lucide-react";
 import { TERMINAL } from "../api/types";
 import { Link } from "../lib/router";
 import { useVigil } from "../state/vigil";
@@ -27,6 +27,10 @@ export function Rail({ path, chaosOpen, onChaos }: { path: string; chaosOpen: bo
         aria-label="Chaos Lab" title="Chaos Lab: break things on purpose">
         <FlaskConical size={22} strokeWidth={1.75} />
       </button>
+      <Link href="/phones" className="rail-btn" aria-current={path.startsWith("/phones") ? "page" : undefined}
+        aria-label="Phone checkout: pay from your phone" title="Phone checkout: pay from your phone">
+        <Smartphone size={22} strokeWidth={1.75} />
+      </Link>
       <a href="/store" target="_blank" rel="noreferrer" className="rail-btn" aria-label="Open the demo store in a new tab" title="Demo store">
         <ShoppingBag size={22} strokeWidth={1.75} />
       </a>

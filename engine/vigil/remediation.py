@@ -78,6 +78,15 @@ class Remediator:
                 if not any(c["name"] == info["container"] and c.get("status") == "running" for c in found):
                     self.scaled.pop(svc, None)
 
+    def _stuck_primaries(self, service: str) -> list[str]:
+        """Primary instances that stopped answering: exited, or failing their health
+        check. An instance overloaded long enough can stay wedged on its backlog even
+        after a replica takes half the traffic; only a restart clears that."""
+        cur = self.e.versions.get(service)
+        return [c["name"] for c in self.inventory if c.get("service") == service and c.get("role") != "replica"
+                and (cur is None or c.get("version") in (None, cur))
+                and (c.get("status") != "running" or c.get("health") == "unhealthy")]
+
     def _spare_for(self, service: str) -> dict | None:
         if service in self.scaled:
             return None
@@ -127,7 +136,8 @@ class Remediator:
                 root=diag["root"], category=diag["category"], symptoms=list(diag.get("symptoms", {})),
                 fail_per_min=fail_per_min, checkout_rps=rps, horizon_min=self.e.s.horizon_min,
                 restart_downtime_s=self.e.s.restart_downtime_s, history=self.e.store.outcome_history(),
-                last_change=last_change, spare=self._spare_for(diag["root"]) is not None)
+                last_change=last_change, spare=self._spare_for(diag["root"]) is not None,
+                root_down=(v is not None and v.state == "down") or bool(self._stuck_primaries(diag["root"])))
             attempts = len(inc["data"].get("actions", []))
             tried = {(a["action"], a["target"]) for a in inc["data"].get("actions", [])}
             viable = [o for o in options if o.action != "wait" and o.executable and o.score > 0
@@ -181,6 +191,11 @@ class Remediator:
                 return
             if chosen is None:
                 rec = RECOMMEND_WITHOUT_FIX.get(diag["category"], "a human should investigate {root}").format(root=diag["root"])
+                if (diag["category"] == "load_saturation" and diag["root"] not in self.scaled
+                        and not any(c.get("service") == diag["root"] and c.get("role") == "replica"
+                                    for c in self.inventory)):
+                    rec += (f" (there is no warm {diag['root']} spare to start; create one with "
+                            f"`docker compose --profile replica create {diag['root']}-replica`)")
                 why = "previous fix did not restore service" if retry else f"no safe automatic fix for {CATEGORY_LABEL[diag['category']]} in this build"
                 self._escalate(inc_id, f"{why}. Recommended: {rec}", plan)
                 return
@@ -276,8 +291,13 @@ class Remediator:
                 results = await self._scale_out(action_id, option, managed, inc_id)
             else:
                 # Only what is running now: restarting a stopped old version would
-                # quietly put two versions behind the same name.
-                targets = [c["name"] for c in managed if c["service"] == option.target and c.get("status") == "running"]
+                # quietly put two versions behind the same name. A replica VIGIL started
+                # for extra room is never the patient: faults live in the primary.
+                mine = [c for c in managed if c["service"] == option.target]
+                primaries = [c for c in mine if c.get("role") != "replica"]
+                targets = [c["name"] for c in primaries if c.get("status") == "running"]
+                if not targets and not primaries:
+                    targets = [c["name"] for c in mine if c.get("status") == "running"]
                 if not targets:
                     # Nothing running: it crashed (say, killed at its memory limit). Bring
                     # back the instance of the version that was serving, never an old one.
@@ -410,9 +430,10 @@ class Remediator:
             if inc["status"] != "VERIFYING" or not v or v["result"] != "pending" or now < v["settle_until"]:
                 continue
             fail = snap.user.fail_ratio
-            if v["action"] == "scale_out":
+            if v["action"] == "scale_out" or inc["data"].get("diagnosis", {}).get("category") == "load_saturation":
                 # Demand is still high by design; capacity is what was fixed. Users
-                # served and nothing down is recovery.
+                # served and nothing down is recovery (also after restarting an
+                # instance that wedged under the surge: it stays busy while the sale runs).
                 services_ok = all(verdicts.get(s) is not None and verdicts[s].state != "down" for s in inc["services"])
             else:
                 services_ok = all(verdicts.get(s) is not None and verdicts[s].state == "healthy"
@@ -458,6 +479,10 @@ class Remediator:
         inc = self.e.incidents.open.get(inc_id)
         if not inc:
             return
+        if inc["data"].get("failed_checkouts", 0) < 1 and (inc["data"].get("peak_fail_ratio") or 0) < self.e.s.recovered_fail_ratio:
+            # Nobody was hurt: a human has it now. Don't reopen the same quiet anomaly
+            # every few minutes; anything that starts failing checkouts still opens.
+            self.e.mute_quiet(inc["services"])
         diag = inc["data"].get("diagnosis", {})
         tried = ", ".join(f"{a['action']} {a['target']}" for a in inc["data"].get("actions", [])) or "nothing"
         self.e.incidents.transition(

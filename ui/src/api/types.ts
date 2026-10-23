@@ -52,6 +52,7 @@ export interface Verdict {
   learning_eta_s?: number | null;
   time_to_oom_s?: number | null;
   texts?: Record<string, string>;
+  demand?: boolean;
   baseline: { samples: number; created_at: number; medians: Record<string, number> } | null;
   in_incident: string | null;
 }

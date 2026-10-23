@@ -29,6 +29,9 @@ PRIORS: dict[tuple[str, str], float] = {
 SCALE_OTHER_P = 0.0          # a replica runs the same code: it does not fix a fault, only adds room
 ROLLBACK_OTHER_P = 0.15      # a recent deploy that is not the cause: rolling back rarely helps
 SYMPTOM_RESTART_P = 0.0      # the cause keeps running: restarting a symptom fixes nothing
+# Overloaded so badly it stopped answering: a replica is the fix, but if the instance
+# itself died under the load, starting it again is the fallback once there is room.
+OVERLOAD_DOWN_RESTART_P = 0.5
 PRIOR_STRENGTH = 4           # the prior counts as 4 past attempts
 
 # Actions this build can execute, and how risky each is. A restart runs the same
@@ -72,22 +75,28 @@ def learned_p(prior: float, successes: int, attempts: int) -> float:
 def price_options(*, root: str, category: str, symptoms: list[str], fail_per_min: float,
                   checkout_rps: float, horizon_min: float, restart_downtime_s: float,
                   history: dict[tuple[str, str], tuple[int, int]],
-                  last_change: dict | None = None, spare: bool = False) -> list[Option]:
+                  last_change: dict | None = None, spare: bool = False,
+                  root_down: bool = False) -> list[Option]:
     """last_change: the root's most recent version change, if recent. Only then is
     a rollback an option (there must be a previous version to go back to).
-    spare: a stopped warm replica of the root exists, so adding capacity is an option."""
+    spare: a stopped warm replica of the root exists, so adding capacity is an option.
+    root_down: the root is not answering at all right now."""
     at_stake = fail_per_min * horizon_min
     restart_drops = restart_downtime_s * checkout_rps
     options = [Option("wait", None, 0.0, 0.0, 0.0, 0.0,
                       f"~{fail_per_min:.0f} checkouts keep failing every minute", executable=True)]
 
     prior = PRIORS.get((category, "restart"), 0.3)
+    restart_note = f"clears a {category.replace('_', ' ')}"
+    if category == "load_saturation" and root_down:
+        prior = OVERLOAD_DOWN_RESTART_P
+        restart_note = "brings back an instance that stopped answering, but adds no capacity"
     succ, tries = history.get((category, "restart"), (0, 0))
     p = learned_p(prior, succ, tries)
     saves = p * at_stake
     track = f"; VIGIL's record: {succ}/{tries}" if tries else ""
     options.append(Option("restart", root, round(p, 2), round(saves), round(restart_drops),
-                          round(saves - restart_drops), f"clears a {category.replace('_', ' ')}{track}"))
+                          round(saves - restart_drops), f"{restart_note}{track}"))
     if last_change:
         prior_rb = PRIORS.get((category, "rollback"), ROLLBACK_OTHER_P)
         succ_rb, tries_rb = history.get((category, "rollback"), (0, 0))

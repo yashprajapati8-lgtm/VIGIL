@@ -15,7 +15,12 @@ function readHidden(): boolean {
   }
 }
 
+// Set by the help button so the guide shows even mid-incident, and even when the
+// button was pressed on another page (the guide mounts after the event fired).
+let requested = false;
+
 export function showGuide() {
+  requested = true;
   try {
     localStorage.removeItem(KEY);
   } catch {
@@ -24,21 +29,30 @@ export function showGuide() {
   window.dispatchEvent(new Event("vigil:guide"));
 }
 
-export function StartHere({ onOpenChaos, replay = false }: { onOpenChaos: () => void; replay?: boolean }) {
+type Busy = "incident" | "learning" | null;
+
+export function StartHere({ onOpenChaos, replay = false, busy = null }: { onOpenChaos: () => void; replay?: boolean; busy?: Busy }) {
   // The replay starts playing by itself, so its guide waits for the help button.
-  const [hidden, setHidden] = useState(() => replay || readHidden());
+  // Live, it shows by itself only while nothing is happening; the help button opens it any time.
+  const [hidden, setHidden] = useState(() => (replay ? !requested : readHidden() && !requested));
+  const [asked, setAsked] = useState(() => requested);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
+    const scroll = () => window.setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     const show = () => {
       setHidden(false);
-      window.setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      setAsked(true);
+      scroll();
     };
+    if (requested) scroll();
     window.addEventListener("vigil:guide", show);
     return () => window.removeEventListener("vigil:guide", show);
   }, []);
-  if (hidden) return null;
+  if (hidden || (busy && !asked && !replay)) return null;
 
   const hide = () => {
+    requested = false;
+    setAsked(false);
     setHidden(true);
     if (replay) return;
     try {
@@ -88,7 +102,13 @@ export function StartHere({ onOpenChaos, replay = false }: { onOpenChaos: () => 
         <h2 id="guide-title">See VIGIL work in about a minute</h2>
         <button type="button" className="btn btn-ghost btn-small" onClick={hide}>Hide guide</button>
       </div>
-      <p className="panel-caption">Everything is running and healthy. Break something on purpose and watch VIGIL find the real cause and fix it, on its own.</p>
+      <p className="panel-caption">
+        {busy === "incident"
+          ? "An incident is open right now, so VIGIL is busy fixing it. Let it finish (the map turns green again), then break one thing at a time."
+          : busy === "learning"
+            ? "VIGIL is still learning what normal looks like, which takes about 3 minutes. Wait for that to finish, then break something."
+            : "Everything is running and healthy. Break something on purpose and watch VIGIL find the real cause and fix it, on its own."}
+      </p>
       <ol className="guide-steps">
         <li className="guide-step">
           <span className="guide-num" aria-hidden="true">1</span>

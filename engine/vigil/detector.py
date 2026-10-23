@@ -34,6 +34,10 @@ log = logging.getLogger("vigil.detector")
 
 MODEL_VERSION = 2
 MIN_SAMPLES = 24
+# Memory that sits higher than normal but has stopped growing is not a failure:
+# after a burst of traffic Python keeps what it allocated. Memory counts as a
+# symptom only while it grows, or once it passes this share of the limit.
+MEM_ALARM_SHARE = 0.7
 
 # signal -> (absolute floor, relative floor as a share of the median).
 # Only the bad direction counts: faster responses are never an incident.
@@ -271,6 +275,9 @@ class ServiceDetector:
             value = getattr(sample, sig)
             v.texts[sig] = describe(sig, value, bl.medians[sig])
         bad = {sig: val for sig, val in z.items() if sig in SYMPTOMS and val > self.s.z_flag}
+        if ("mem_mb" in bad and z.get("mem_slope_mb_s", 0.0) <= self.s.z_flag
+                and (sample.mem_mb or 0.0) < MEM_ALARM_SHARE * self.s.memory_limit_mb):
+            bad.pop("mem_mb")
         extreme = {sig: val for sig, val in bad.items() if val > self.s.z_extreme}
         if extreme or (bad and score > bl.cut):
             v.flagged = True

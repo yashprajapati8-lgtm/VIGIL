@@ -4,6 +4,7 @@ import type { Verdict } from "../api/types";
  *  Same rule the engine uses to avoid opening incidents for real demand. */
 export function isDemand(v: Verdict | undefined): boolean {
   if (!v) return false;
+  if (v.demand) return true;   // the engine sees a surge of customers and every checkout served
   const z = v.z ?? {};
   return (z.rps ?? 0) > 3 && (z.cpu_per_req ?? 0) < 2;
 }

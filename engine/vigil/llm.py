@@ -37,12 +37,16 @@ How failures propagate (apply these before anything else):
   the callers timing out on it. Never decide on onset order alone.
 
 Categories:
-- crashed: the service is down (up = 0). Never use it when up = 1.
+- crashed: the service is down (up = 0) while demand is normal. Never use it when up = 1.
 - resource_leak: memory keeps growing (memory growth well above normal).
 - stuck_process: latency or CPU per request far above normal while traffic is
   flat or lower: stuck workers, blocked connections, a runaway loop.
 - load_saturation: traffic (rps) far ABOVE normal and CPU per request roughly
   normal: real demand beyond capacity. Never use it when traffic is flat or down.
+  Also use it when storefront checkout_attempts_per_s is far above its baseline
+  (2.5x or more) and the service customers reach first is slow, failing or not
+  answering (up = 0): it is overloaded by demand, not crashed or stuck. Under
+  overload, CPU per request inflates from queueing; that does not make it stuck.
 - regression_after_change: the service changed version shortly before onset.
 - unknown: nothing above fits.
 
