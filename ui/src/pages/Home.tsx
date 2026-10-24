@@ -1,4 +1,5 @@
 import { BookOpen, FolderGit2, MonitorPlay, Play } from "lucide-react";
+import { LIVE_VIDEO_URL } from "../lib/links";
 import { useEffect, useState } from "react";
 import { GlassField, TiltCard } from "../components/GlassField";
 import { Logo } from "../components/Logo";
@@ -9,7 +10,6 @@ import { REPLAY, REPO_URL } from "../replay/player";
 // The front door. A judge should understand VIGIL in 30 seconds here, then open
 // the console (live, or the recorded run on the hosted link) or watch the video.
 
-const VIDEO_URL: string = import.meta.env.VITE_VIDEO_URL || "https://youtu.be/AQKw7XUuKtk";
 const NOBODY = { secs: 22 * 60 + 31, lost: 20336 };   // the same fault, nobody acting: still failing when the test ended (measured)
 
 interface Row { scenario: string; label: string; pass?: boolean; mttd_s?: number | null; mttr_s?: number | null; checkouts_lost?: number | null; actions?: string[]; root?: string | null }
@@ -157,7 +157,7 @@ export function Home() {
             </p>
             <div className="hero-ctas">
               <Link href="/console" className="btn btn-primary btn-lg"><MonitorPlay size={18} /> Open the console</Link>
-              {VIDEO_URL && <a className="btn btn-lg" href={VIDEO_URL} target="_blank" rel="noreferrer"><Play size={18} /> Watch the 5-min demo</a>}
+              <a className="btn btn-lg" href={LIVE_VIDEO_URL} target="_blank" rel="noreferrer"><Play size={18} /> Watch it live (3 min)</a>
               {REPO_URL && <a className="btn btn-lg" href={REPO_URL} target="_blank" rel="noreferrer"><FolderGit2 size={18} /> Code on GitHub</a>}
             </div>
             <p className="hero-note">

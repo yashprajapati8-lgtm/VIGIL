@@ -1,9 +1,10 @@
 import qrcode from "qrcode-generator";
-import { Copy, ExternalLink, Globe, Smartphone } from "lucide-react";
+import { Copy, ExternalLink, Globe, Play, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { clock } from "../lib/format";
 import { usePhones, rupees, PRODUCT_NAMES } from "../lib/phones";
 import { REPLAY } from "../replay/player";
+import { LIVE_VIDEO_URL } from "../lib/links";
 
 // Let anyone pay from a phone. The QR code opens the demo checkout (/pay); each
 // phone on it says hello every 5 s, and every payment lands here with how long it
@@ -94,6 +95,9 @@ export function Phones() {
       <section className="panel" aria-labelledby="phones-title">
         <div className="panel-head"><h1 id="phones-title" className="page-title">Phone checkout</h1></div>
         <p className="panel-caption">This link plays back a recorded run, so there is no shop for a phone to pay. On the live stack (<code>docker compose up</code>) this page shows a QR code: scan it, pay from your phone, and watch the payment land in VIGIL.</p>
+        <div className="phones-actions">
+          <a className="btn btn-primary" href={LIVE_VIDEO_URL} target="_blank" rel="noreferrer"><Play size={16} /> Watch a phone pay live (3 min)</a>
+        </div>
       </section>
     );
   }

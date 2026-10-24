@@ -2,6 +2,7 @@ import { CircleAlert, FlaskConical, GraduationCap, Pause, Play } from "lucide-re
 import { useEffect, useState } from "react";
 import { player, REPLAY, REPO_URL } from "../replay/player";
 import { duration } from "../lib/format";
+import { LIVE_VIDEO_URL } from "../lib/links";
 import { useVigil } from "../state/vigil";
 
 /** Overall learning state: slowest service decides; the countdown ticks every second
@@ -81,6 +82,7 @@ function ReplayBanner() {
         <button type="button" className="btn btn-small btn-chaos" onClick={() => window.dispatchEvent(new Event("vigil:open-chaos"))}>
           <FlaskConical size={15} /> Pick a fault
         </button>
+        <a className="btn btn-small btn-primary" href={LIVE_VIDEO_URL} target="_blank" rel="noreferrer"><Play size={14} /> Watch it live (3 min)</a>
         {REPO_URL && <a className="btn btn-small" href={REPO_URL} target="_blank" rel="noreferrer">Run it live</a>}
       </span>
     </div>
