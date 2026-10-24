@@ -2,13 +2,21 @@
 
 **Watches every service. Fixes the real cause.**
 
+> ## ▶️ MUST WATCH FOR BETTER UNDERSTANDING
+> **Live demo (3 min):** VIGIL running for real on my laptop: it finds the real cause, fixes it on its own, and a phone payment fails and then succeeds again.
+>
+> **https://youtu.be/5g_4jCZjP8M**
+>
+> [![VIGIL live demo: must watch](https://img.youtube.com/vi/5g_4jCZjP8M/maxresdefault.jpg)](https://youtu.be/5g_4jCZjP8M)
+
 VIGIL is an autonomous resilience engine for microservices. It notices when customers start
 failing, works out which service is actually broken (not just the loudest one), applies the
 right fix inside strict guardrails, and only calls it done when real checkouts recover.
 
 | | |
 | --- | --- |
-| **Demo video (5 min, voiced)** | **https://youtu.be/AQKw7XUuKtk** |
+| **▶️ MUST WATCH: live demo (3 min)** | **https://youtu.be/5g_4jCZjP8M** |
+| **Full walkthrough (5 min, voiced)** | **https://youtu.be/AQKw7XUuKtk** |
 | **Try it in your browser** (a real recorded run, nothing to install) | **https://vigil-six-blue.vercel.app** |
 | **Proving Ground scorecard** | **5/5 passed** across 4 real faults and a quiet period: median detection 18.8 s, median verified recovery 1m 15s, 0 false alarms |
 
