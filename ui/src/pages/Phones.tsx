@@ -1,10 +1,10 @@
 import qrcode from "qrcode-generator";
-import { Copy, ExternalLink, Globe, Play, Smartphone } from "lucide-react";
+import { Copy, ExternalLink, FolderGit2, Globe, Play, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { clock } from "../lib/format";
 import { usePhones, rupees, PRODUCT_NAMES } from "../lib/phones";
 import { REPLAY } from "../replay/player";
-import { LIVE_VIDEO_URL } from "../lib/links";
+import { GITHUB_URL, LIVE_VIDEO_URL, PHONE_README_URL } from "../lib/links";
 
 // Let anyone pay from a phone. The QR code opens the demo checkout (/pay); each
 // phone on it says hello every 5 s, and every payment lands here with how long it
@@ -92,13 +92,53 @@ export function Phones() {
 
   if (REPLAY) {
     return (
-      <section className="panel" aria-labelledby="phones-title">
-        <div className="panel-head"><h1 id="phones-title" className="page-title">Phone checkout</h1></div>
-        <p className="panel-caption">This link plays back a recorded run, so there is no shop for a phone to pay. On the live stack (<code>docker compose up</code>) this page shows a QR code: scan it, pay from your phone, and watch the payment land in VIGIL.</p>
-        <div className="phones-actions">
-          <a className="btn btn-primary" href={LIVE_VIDEO_URL} target="_blank" rel="noreferrer"><Play size={16} /> Watch a phone pay live (3 min)</a>
-        </div>
-      </section>
+      <div className="stack">
+        <section className="panel" aria-labelledby="phones-title">
+          <div className="panel-head">
+            <h1 id="phones-title" className="page-title">Pay from your phone</h1>
+            <span className="chip">Live stack only</span>
+          </div>
+          <p className="panel-caption phones-why">
+            <b>Why it isn't on this link:</b> this site is hosted on Vercel, which serves web pages, not long-running
+            servers. Live VIGIL is a whole system that runs in Docker around the clock: the shop's storefront, payment and
+            inventory services, Prometheus, the VIGIL engine, and the actuator that restarts real containers. None of
+            that can run on Vercel, so this link replays a run recorded on our laptop instead. With no shop behind it, a
+            payment from your phone would have nowhere to go, and faking one would prove nothing.
+          </p>
+          <p className="panel-caption phones-why">
+            <b>What it does live:</b> your phone pays through the same services VIGIL watches. Break inventory and your
+            payment fails, then you watch VIGIL fix it and your next payment goes through. No real money moves.
+          </p>
+          <div className="phones-actions">
+            <a className="btn btn-primary" href={LIVE_VIDEO_URL} target="_blank" rel="noreferrer"><Play size={16} /> Watch a phone pay live (3 min)</a>
+            <a className="btn" href={PHONE_README_URL} target="_blank" rel="noreferrer"><FolderGit2 size={16} /> Run it yourself from GitHub</a>
+          </div>
+        </section>
+
+        <section className="panel" aria-labelledby="phones-run">
+          <div className="panel-head"><h2 id="phones-run">Try it live in three steps</h2><span className="panel-sub">needs Docker Desktop</span></div>
+          <ol className="guide-steps">
+            <li className="guide-step">
+              <span className="guide-num" aria-hidden="true">1</span>
+              <b>Get the code</b>
+              <span>Clone the repo, then copy <code>.env.example</code> to <code>.env</code> and set the two tokens in it.</span>
+              <code className="fault-cmd">git clone {GITHUB_URL}</code>
+            </li>
+            <li className="guide-step">
+              <span className="guide-num" aria-hidden="true">2</span>
+              <b>Start VIGIL</b>
+              <span>Every service starts in Docker. VIGIL learns what normal looks like for about 3 minutes.</span>
+              <code className="fault-cmd">docker compose up --build -d</code>
+            </li>
+            <li className="guide-step">
+              <span className="guide-num" aria-hidden="true">3</span>
+              <b>Open the phone link</b>
+              <span>Start a public link, open <code>localhost:3000/phones</code> and scan the QR code with any phone.</span>
+              <code className="fault-cmd">docker compose --profile public up -d cloudflared</code>
+            </li>
+          </ol>
+        </section>
+      </div>
     );
   }
 

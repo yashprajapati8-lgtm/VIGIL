@@ -144,3 +144,7 @@
 .wire-phone[data-ok="false"] { color: #f9a39b; }
 @keyframes vg-phone-in { 0% { opacity: 0; transform: translateY(4px) scale(0.96); } 60% { opacity: 1; transform: scale(1.04); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .node-phone, .wire-phone { animation: none; } }
+
+.phones-why { max-width: 76ch; }
+.guide-step { min-width: 0; }
+.guide-step .fault-cmd { display: block; margin-top: auto; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
