@@ -164,6 +164,13 @@ def reset_baseline(service: str | None = None, x_vigil_token: str | None = Heade
     return {"relearning": targets}
 
 
+@app.post("/api/fresh-start")
+def fresh_start(x_vigil_token: str | None = Header(None)):
+    """Close any open incident and relearn normal from scratch. Clear chaos faults first."""
+    require_admin(x_vigil_token)
+    return _engine().fresh_start()
+
+
 # ---------------------------------------------------------------- human control
 
 

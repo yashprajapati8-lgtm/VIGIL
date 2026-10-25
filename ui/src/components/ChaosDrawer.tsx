@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, getToken } from "../api/client";
 import type { Scenario } from "../api/types";
 import { REPLAY } from "../replay/player";
 import { useLearning } from "./Banners";
@@ -82,6 +82,27 @@ export function ChaosDrawer({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // Clean slate for a demo: clear every fault, let the numbers settle (rates look back
+  // 20 s), then close any open incident and relearn normal. Operator only.
+  const freshStart = async () => {
+    if (!getToken()) {
+      setMessage("Fresh start needs the admin token: unlock with the lock button (top right), then hold again.");
+      return;
+    }
+    try {
+      await api.post("/chaos/reset");
+      for (let left = 25; left > 0; left -= 1) {
+        setMessage(`Faults cleared. Letting the numbers settle: relearning in ${left} s.`);
+        await new Promise((r) => window.setTimeout(r, 1000));
+      }
+      const r = await api.post<{ closed: string[] }>("/api/fresh-start");
+      setMessage(`Fresh start${r.closed?.length ? `: closed ${r.closed.join(", ")}` : ""}. VIGIL is relearning normal (about 3 minutes); faults unlock when it's ready.`);
+      load();
+    } catch (e) {
+      setMessage(e instanceof Error ? `Fresh start failed: ${e.message}` : "Fresh start failed");
+    }
+  };
+
   return (
     <>
       <div className="drawer-scrim" onClick={onClose} />
@@ -137,6 +158,11 @@ export function ChaosDrawer({ onClose }: { onClose: () => void }) {
           <span className="panel-sub">{REPLAY
             ? "Stopping returns to the calm moment before the fault. In the live app, VIGIL never uses reset; it fixes faults with real container actions."
             : "Reset is for demo re-runs. VIGIL never uses it; it fixes faults with real container actions."}</span>
+          {!REPLAY && <>
+            <HoldButton className="hold-reset" label="Hold for a fresh start (relearn normal)" doneLabel="Fresh start running"
+              holdMs={1500} onFire={freshStart} />
+            <span className="panel-sub">Clears every fault, closes any open incident and makes VIGIL learn normal again from scratch (about 3 minutes). Needs the admin token.</span>
+          </>}
         </div>
       </aside>
     </>

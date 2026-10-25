@@ -160,3 +160,20 @@ def test_busy_from_a_surge_with_nobody_hurt_does_not_open(tmp_path):
         eng.process(snap)
     assert eng.verdicts["inventory"].flagged
     assert not eng.incidents.open
+
+
+def test_fresh_start_closes_incidents_and_relearns(tmp_path):
+    world = World()
+    eng, store = make_engine(tmp_path, world)
+    world.inventory_slow = True
+    for _ in range(6):
+        eng.process(world.snapshot())
+    assert eng.incidents.open
+    eng.governor.record(type("O", (), {"action": "restart", "target": "inventory"})())
+    out = eng.fresh_start()
+    assert out["closed"] and not eng.incidents.open
+    assert all(d.baseline is None for d in eng.detectors.values())
+    assert not eng.governor.history
+    world.inventory_slow = False
+    eng.process(world.snapshot())
+    assert all(v.state == "learning" for v in eng.verdicts.values())

@@ -213,6 +213,32 @@ class Engine:
         for svc in services:
             self.quiet_until[svc] = until
 
+    def fresh_start(self) -> dict:
+        """Operator's clean slate for a demo: close any open incident, forget the
+        learned normal for every service and relearn it. VIGIL's record of which
+        fixes worked is kept. Call with faults already cleared."""
+        with self.lock:
+            closed = []
+            for inc_id, inc in list(self.incidents.open.items()):
+                if inc["status"] == "OPEN":
+                    self.incidents.transition(inc_id, "INVESTIGATING", actor="human", stage="system",
+                                              kind="fresh_start", summary="Closing for a fresh start")
+                self.incidents.transition(inc_id, "ESCALATED", actor="human", stage="system", kind="fresh_start",
+                                          summary=f"{inc_id} closed by the operator for a fresh start")
+                closed.append(inc_id)
+            self.reset_persistence(list(self.detectors))
+            for det in self.detectors.values():
+                det.reset()
+            self.quiet_until.clear()
+            self.first_flag.clear()
+            self.governor.history.clear()     # a fresh start gets a fresh action budget
+            ev = self.store.append_event(stage="system", actor="human", kind="baseline_reset",
+                                         summary=("Fresh start: " + (f"closed {', '.join(closed)}; " if closed else "")
+                                                  + "relearning normal for every service (about 3 minutes)"),
+                                         payload={"closed": closed, "services": list(self.detectors)})
+            self.bus.publish({"type": "event", "event": ev})
+        return {"closed": closed, "relearning": list(self.detectors)}
+
     def reset_persistence(self, services: list[str]) -> None:
         """After an incident closes, a fresh anomaly must open a fresh incident."""
         for svc in services:
